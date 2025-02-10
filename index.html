@@ -31,6 +31,15 @@
     #refresh-button:hover {
       background-color: #0083A7; /* Цвет кнопки при наведении */
     }
+
+    /* Мобильная версия */
+    @media (max-width: 768px) {
+      #refresh-button {
+        top: auto;
+        bottom: 20px;
+        right: 20px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -70,7 +79,12 @@
       // Draw houses
       let housePositions = [];
       for (let i = 0; i < numHouses; i++) {
-        let floors = int(random(2, 5)); // Number of floors: 2 to 4
+        let floors;
+        if (windowWidth <= 768) { // Мобильная версия: не более 3 этажей
+          floors = int(random(2, 4)); // Number of floors: 2 to 3
+        } else { // Десктопная версия
+          floors = int(random(2, 5)); // Number of floors: 2 to 4
+        }
         let houseColor = color(random(150, 200), random(150, 200), random(150, 200));
         let roofColor = color(random(100, 150), random(100, 150), random(100, 150));
         let windowColor = color(255);
