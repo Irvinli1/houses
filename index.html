@@ -15,8 +15,8 @@
     }
     #refresh-button {
       position: absolute;
-      top: 30px;
-      right: 30px;
+      bottom: 20px;
+      right: 20px;
       background-color: #009FCB; /* Новый цвет кнопки */
       color: white;
       border: none;
@@ -30,15 +30,6 @@
     }
     #refresh-button:hover {
       background-color: #0083A7; /* Цвет кнопки при наведении */
-    }
-
-    /* Мобильная версия */
-    @media (max-width: 768px) {
-      #refresh-button {
-        top: auto;
-        bottom: 20px;
-        right: 20px;
-      }
     }
   </style>
 </head>
@@ -179,10 +170,42 @@
 
     function drawTrees() {
       let numTrees = int(random(5, 10));
+      let treePositions = [];
       for (let i = 0; i < numTrees; i++) {
-        let x = random(width);
-        let y = height * 0.75;
-        drawTree(x, y);
+        let x, y;
+        let attempts = 0;
+        let validPosition = false;
+
+        // Проверяем, чтобы деревья не соприкасались листвой группами больше 3 подряд
+        while (!validPosition && attempts < 100) {
+          x = random(width);
+          y = height * 0.75;
+          validPosition = true;
+
+          // Проверяем расстояние до других деревьев
+          for (let pos of treePositions) {
+            if (dist(x, y, pos.x, pos.y) < 50) { // 50 - минимальное расстояние между деревьями
+              validPosition = false;
+              break;
+            }
+          }
+
+          // Проверяем, чтобы не было групп из более чем 3 деревьев подряд
+          if (treePositions.length >= 3) {
+            let lastThree = treePositions.slice(-3);
+            let allClose = lastThree.every(pos => dist(x, y, pos.x, pos.y) < 120); // 120 - расстояние для группы
+            if (allClose) {
+              validPosition = false;
+            }
+          }
+
+          attempts++;
+        }
+
+        if (validPosition) {
+          treePositions.push({ x: x, y: y });
+          drawTree(x, y);
+        }
       }
     }
 
