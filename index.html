@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Генерация картинки с p5.js</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden; /* Убираем скролл */
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      display: block; /* Убираем лишние отступы у canvas */
+    }
+    #refresh-button {
+      position: absolute;
+      top: 30px;
+      right: 30px;
+      background-color: #009FCB; /* Новый цвет кнопки */
+      color: white;
+      border: none;
+      border-radius: 100px; /* Полностью круглые края */
+      padding: 15px 30px;
+      font-size: 18px;
+      cursor: pointer;
+      height: 60px;
+      z-index: 100; /* Чтобы кнопка была поверх холста */
+      transition: background-color 0.3s ease; /* Плавное изменение цвета */
+    }
+    #refresh-button:hover {
+      background-color: #0083A7; /* Цвет кнопки при наведении */
+    }
+  </style>
+</head>
+<body>
+  <!-- Кнопка "Обновить" -->
+  <button id="refresh-button">Обновить</button>
+
+  <!-- Подключаем библиотеку p5.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+
+  <!-- Ваш код на p5.js -->
+  <script>
+    let bgTexture;
+    let season;
+
+    function setup() {
+      // Создаем холст на всю ширину и высоту экрана
+      const canvas = createCanvas(windowWidth, windowHeight);
+      canvas.position(0, 0); // Позиционируем холст в верхнем левом углу
+      noLoop();
+      bgTexture = createGraphics(width, height);
+      drawBackgroundTexture();
+      season = random(['spring', 'summer', 'autumn', 'winter']);
+
+      // Привязываем кнопку "Обновить" к функции refreshCanvas
+      const refreshButton = document.getElementById('refresh-button');
+      refreshButton.addEventListener('click', refreshCanvas);
+    }
+
+    function draw() {
+      // Draw background with subtle texture
+      image(bgTexture, 0, 0);
+
+      // Generate random parameters
+      let numHouses = int(random(2, 8)); // Number of houses: 2 to 7
+      let weather = random(['rainy', 'snowy']);
+
+      // Draw houses
+      let housePositions = [];
+      for (let i = 0; i < numHouses; i++) {
+        let floors = int(random(2, 5)); // Number of floors: 2 to 4
+        let houseColor = color(random(150, 200), random(150, 200), random(150, 200));
+        let roofColor = color(random(100, 150), random(100, 150), random(100, 150));
+        let windowColor = color(255);
+        let curtainColor = color(random(200, 255), random(100, 150), random(100, 150));
+        let hasCurtains = random() > 0.5; // Окна либо полностью открыты, либо полностью закрыты шторами
+        let houseX = random(50, width - 250);
+
+        // Check if the house overlaps with others
+        let overlap = false;
+        for (let pos of housePositions) {
+          if (abs(houseX - pos.x) < 200) { // 200 is the minimum distance between houses
+            overlap = true;
+            break;
+          }
+        }
+
+        if (!overlap) {
+          housePositions.push({ x: houseX, floors: floors });
+          drawHouse(houseX, floors, houseColor, roofColor, windowColor, hasCurtains, curtainColor);
+        }
+      }
+
+      // Draw trees
+      drawTrees();
+
+      // Draw weather effects
+      if (season === 'autumn' || season === 'winter') {
+        drawWeather(weather);
+      }
+    }
+
+    function drawBackgroundTexture() {
+      bgTexture.background(240, 240, 240);
+      bgTexture.stroke(220, 220, 220);
+      for (let x = 0; x < width; x += 20) {
+        for (let y = 0; y < height; y += 20) {
+          bgTexture.point(x + random(-5, 5), y + random(-5, 5));
+        }
+      }
+    }
+
+    function drawHouse(x, floors, houseColor, roofColor, windowColor, hasCurtains, curtainColor) {
+      let houseWidth = 150;
+      let houseHeight = 100 * floors;
+      let houseY = height * 0.75 - houseHeight;
+
+      // House body
+      fill(houseColor);
+      noStroke();
+      rect(x, houseY, houseWidth, houseHeight);
+
+      // Roof
+      fill(roofColor);
+      triangle(x, houseY, x + houseWidth / 2, houseY - 50, x + houseWidth, houseY);
+
+      // Windows
+      let windowSize = 30;
+      let doorWidth = 50; // Ширина двери
+      let doorX = x + houseWidth / 2 - doorWidth / 2; // Центральное положение двери
+
+      // Отступ от двери для окон
+      let windowOffset = 20; // Минимальное расстояние от двери до окон
+      let windowSpacing = (houseWidth - doorWidth - 2 * windowOffset) / 2; // Равномерное распределение окон
+
+      for (let i = 0; i < floors; i++) {
+        // Левое окно
+        let windowX = x + windowOffset;
+        let windowY = houseY + 20 + i * 100;
+
+        // Правое окно
+        let windowX2 = x + houseWidth - windowOffset - windowSize;
+
+        if (hasCurtains) {
+          // Если окна закрыты шторами
+          fill(curtainColor);
+          rect(windowX, windowY, windowSize, windowSize); // Левое окно
+          rect(windowX2, windowY, windowSize, windowSize); // Правое окно
+        } else {
+          // Если окна открыты
+          fill(windowColor);
+          rect(windowX, windowY, windowSize, windowSize); // Левое окно
+          rect(windowX2, windowY, windowSize, windowSize); // Правое окно
+        }
+      }
+
+      // Door
+      fill(roofColor);
+      let doorHeight = 80;
+      let doorY = houseY + houseHeight - doorHeight;
+      rect(doorX, doorY, doorWidth, doorHeight);
+    }
+
+    function drawTrees() {
+      let numTrees = int(random(5, 10));
+      for (let i = 0; i < numTrees; i++) {
+        let x = random(width);
+        let y = height * 0.75;
+        drawTree(x, y);
+      }
+    }
+
+    function drawTree(x, y) {
+      // Trunk
+      fill(139, 69, 19);
+      noStroke();
+      rect(x, y - 60, 20, 60);
+
+      // Leaves
+      let leafColor;
+      if (season === 'winter') {
+        leafColor = color(255); // Белый цвет для зимы
+      } else {
+        switch (season) {
+          case 'spring':
+            leafColor = color(144, 238, 144); // Light green
+            break;
+          case 'summer':
+            leafColor = color(34, 139, 34); // Green
+            break;
+          case 'autumn':
+            leafColor = color(255, 165, 0); // Orange
+            break;
+        }
+      }
+      fill(leafColor);
+      ellipse(x + 10, y - 80, 60, 60);
+      ellipse(x - 20, y - 50, 60, 60);
+      ellipse(x + 40, y - 50, 60, 60);
+    }
+
+    function drawWeather(weather) {
+      if (weather === 'rainy') {
+        drawRain();
+      } else if (weather === 'snowy') {
+        drawSnow();
+      }
+    }
+
+    function drawRain() {
+      stroke(173, 216, 230);
+      for (let i = 0; i < 100; i++) {
+        let x = random(width);
+        let y = random(height);
+        line(x, y, x, y + random(10, 20));
+      }
+    }
+
+    function drawSnow() {
+      fill(255);
+      noStroke();
+      for (let i = 0; i < 100; i++) {
+        let x = random(width);
+        let y = random(height);
+        ellipse(x, y, random(5, 10), random(5, 10));
+      }
+    }
+
+    // Функция для обновления холста
+    function refreshCanvas() {
+      clear();
+      drawBackgroundTexture();
+      season = random(['spring', 'summer', 'autumn', 'winter']);
+      redraw();
+    }
+
+    // Обработка изменения размера окна
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+      drawBackgroundTexture();
+      redraw();
+    }
+  </script>
+</body>
+</html>
