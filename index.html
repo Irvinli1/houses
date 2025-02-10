@@ -44,15 +44,61 @@
   <script>
     let bgTexture;
     let season;
+    let clouds = []; // Массив для хранения облаков
+    let houses = []; // Массив для хранения домов
+    let trees = []; // Массив для хранения деревьев
+    let snowflakes = []; // Массив для хранения снежинок
+    let raindrops = []; // Массив для хранения капель дождя
+    let groundLevel; // Уровень земли (нижняя граница домов и деревьев)
 
     function setup() {
       // Создаем холст на всю ширину и высоту экрана
       const canvas = createCanvas(windowWidth, windowHeight);
       canvas.position(0, 0); // Позиционируем холст в верхнем левом углу
-      noLoop();
       bgTexture = createGraphics(width, height);
       drawBackgroundTexture();
       season = random(['spring', 'summer', 'autumn', 'winter']);
+
+      // Уровень земли (нижняя граница домов и деревьев)
+      groundLevel = height * 0.75;
+
+      // Создаем начальные облака
+      for (let i = 0; i < 5; i++) {
+        clouds.push({
+          x: random(width),
+          y: random(height * 0.3), // Облака в верхней части экрана
+          size: random(80, 150), // Более округлые и крупные облака
+          speed: random(0.2, 0.8) // Медленное движение облаков
+        });
+      }
+
+      // Создаем начальные снежинки (если зима)
+      if (season === 'winter') {
+        for (let i = 0; i < 100; i++) {
+          snowflakes.push({
+            x: random(width),
+            y: random(-height, 0), // Начинают сверху за пределами экрана
+            size: random(3, 6), // Размер снежинки
+            speed: random(0.5, 1.5) // Медленная скорость падения
+          });
+        }
+      }
+
+      // Создаем начальные капли дождя (если осень)
+      if (season === 'autumn') {
+        for (let i = 0; i < 100; i++) {
+          raindrops.push({
+            x: random(width),
+            y: random(-height, 0), // Начинают сверху за пределами экрана
+            length: random(10, 20), // Длина капли
+            speed: random(2, 5) // Скорость падения
+          });
+        }
+      }
+
+      // Генерация домов и деревьев
+      generateHouses();
+      generateTrees();
 
       // Привязываем кнопку "Обновить" к функции refreshCanvas
       const refreshButton = document.getElementById('refresh-button');
@@ -63,11 +109,38 @@
       // Draw background with subtle texture
       image(bgTexture, 0, 0);
 
-      // Generate random parameters
-      let numHouses = int(random(2, 8)); // Number of houses: 2 to 7
-      let weather = random(['rainy', 'snowy']);
+      // Рисуем землю (на пару тонов темнее, чем небо)
+      fill(217, 217, 217); // Цвет земли
+      noStroke();
+      rect(0, groundLevel, width, height - groundLevel);
 
-      // Draw houses
+      // Draw houses and trees (статичные)
+      drawHouses();
+      drawTrees();
+
+      // Draw clouds (движутся)
+      drawClouds();
+
+      // Draw weather effects
+      if (season === 'autumn') {
+        drawRain();
+      } else if (season === 'winter') {
+        drawSnow();
+      }
+    }
+
+    function drawBackgroundTexture() {
+      bgTexture.background(240, 240, 240);
+      bgTexture.stroke(220, 220, 220);
+      for (let x = 0; x < width; x += 20) {
+        for (let y = 0; y < height; y += 20) {
+          bgTexture.point(x + random(-5, 5), y + random(-5, 5));
+        }
+      }
+    }
+
+    function generateHouses() {
+      let numHouses = int(random(2, 8)); // Number of houses: 2 to 7
       let housePositions = [];
       for (let i = 0; i < numHouses; i++) {
         let floors;
@@ -94,33 +167,21 @@
 
         if (!overlap) {
           housePositions.push({ x: houseX, floors: floors });
-          drawHouse(houseX, floors, houseColor, roofColor, windowColor, hasCurtains, curtainColor);
+          houses.push({ x: houseX, floors: floors, houseColor, roofColor, windowColor, hasCurtains, curtainColor });
         }
-      }
-
-      // Draw trees
-      drawTrees();
-
-      // Draw weather effects
-      if (season === 'autumn' || season === 'winter') {
-        drawWeather(weather);
       }
     }
 
-    function drawBackgroundTexture() {
-      bgTexture.background(240, 240, 240);
-      bgTexture.stroke(220, 220, 220);
-      for (let x = 0; x < width; x += 20) {
-        for (let y = 0; y < height; y += 20) {
-          bgTexture.point(x + random(-5, 5), y + random(-5, 5));
-        }
+    function drawHouses() {
+      for (let house of houses) {
+        drawHouse(house.x, house.floors, house.houseColor, house.roofColor, house.windowColor, house.hasCurtains, house.curtainColor);
       }
     }
 
     function drawHouse(x, floors, houseColor, roofColor, windowColor, hasCurtains, curtainColor) {
       let houseWidth = 150;
       let houseHeight = 100 * floors;
-      let houseY = height * 0.75 - houseHeight;
+      let houseY = groundLevel - houseHeight;
 
       // House body
       fill(houseColor);
@@ -168,7 +229,7 @@
       rect(doorX, doorY, doorWidth, doorHeight);
     }
 
-    function drawTrees() {
+    function generateTrees() {
       let numTrees = int(random(5, 10));
       let treePositions = [];
       for (let i = 0; i < numTrees; i++) {
@@ -179,7 +240,7 @@
         // Проверяем, чтобы деревья не соприкасались листвой группами больше 3 подряд
         while (!validPosition && attempts < 100) {
           x = random(width);
-          y = height * 0.75;
+          y = groundLevel;
           validPosition = true;
 
           // Проверяем расстояние до других деревьев
@@ -204,8 +265,14 @@
 
         if (validPosition) {
           treePositions.push({ x: x, y: y });
-          drawTree(x, y);
+          trees.push({ x: x, y: y });
         }
+      }
+    }
+
+    function drawTrees() {
+      for (let tree of trees) {
+        drawTree(tree.x, tree.y);
       }
     }
 
@@ -238,30 +305,80 @@
       ellipse(x + 40, y - 50, 60, 60);
     }
 
-    function drawWeather(weather) {
-      if (weather === 'rainy') {
-        drawRain();
-      } else if (weather === 'snowy') {
-        drawSnow();
+    function drawClouds() {
+      for (let cloud of clouds) {
+        // Движение облаков справа налево
+        cloud.x -= cloud.speed;
+
+        // Если облако ушло за левый край, перемещаем его вправо
+        if (cloud.x + cloud.size < 0) {
+          cloud.x = width + cloud.size;
+          cloud.y = random(height * 0.3); // Новое случайное положение по Y
+        }
+
+        // Рисуем облако (перевернутое на 180 градусов)
+        fill(255, 255, 255, 200); // Белый цвет с прозрачностью
+        noStroke();
+        ellipse(cloud.x, cloud.y, cloud.size, cloud.size * 0.8); // Более округлые облака
+        ellipse(cloud.x + cloud.size * 0.3, cloud.y + cloud.size * 0.2, cloud.size * 0.8, cloud.size * 0.6);
+        ellipse(cloud.x - cloud.size * 0.3, cloud.y + cloud.size * 0.2, cloud.size * 0.8, cloud.size * 0.6);
       }
     }
 
     function drawRain() {
-      stroke(173, 216, 230);
-      for (let i = 0; i < 100; i++) {
-        let x = random(width);
-        let y = random(height);
-        line(x, y, x, y + random(10, 20));
+      stroke(173, 216, 230); // Цвет дождя
+      for (let i = raindrops.length - 1; i >= 0; i--) {
+        let raindrop = raindrops[i];
+
+        // Рисуем каплю дождя, если она не достигла земли
+        if (raindrop.y < groundLevel) {
+          line(raindrop.x, raindrop.y, raindrop.x, raindrop.y + raindrop.length);
+
+          // Двигаем каплю вниз
+          raindrop.y += raindrop.speed;
+        } else {
+          // Удаляем каплю, если она достигла земли
+          raindrops.splice(i, 1);
+        }
+      }
+
+      // Добавляем новые капли, чтобы поддерживать их количество
+      if (raindrops.length < 100) {
+        raindrops.push({
+          x: random(width),
+          y: random(-50, 0),
+          length: random(10, 20),
+          speed: random(2, 5)
+        });
       }
     }
 
     function drawSnow() {
       fill(255);
       noStroke();
-      for (let i = 0; i < 100; i++) {
-        let x = random(width);
-        let y = random(height);
-        ellipse(x, y, random(5, 10), random(5, 10));
+      for (let i = snowflakes.length - 1; i >= 0; i--) {
+        let snowflake = snowflakes[i];
+
+        // Рисуем снежинку, если она не достигла земли
+        if (snowflake.y < groundLevel) {
+          ellipse(snowflake.x, snowflake.y, snowflake.size, snowflake.size);
+
+          // Двигаем снежинку вниз
+          snowflake.y += snowflake.speed;
+        } else {
+          // Удаляем снежинку, если она достигла земли
+          snowflakes.splice(i, 1);
+        }
+      }
+
+      // Добавляем новые снежинки, чтобы поддерживать их количество
+      if (snowflakes.length < 100) {
+        snowflakes.push({
+          x: random(width),
+          y: random(-50, 0),
+          size: random(3, 6),
+          speed: random(0.5, 1.5)
+        });
       }
     }
 
@@ -270,6 +387,31 @@
       clear();
       drawBackgroundTexture();
       season = random(['spring', 'summer', 'autumn', 'winter']);
+      houses = [];
+      trees = [];
+      snowflakes = [];
+      raindrops = [];
+      generateHouses();
+      generateTrees();
+      if (season === 'winter') {
+        for (let i = 0; i < 100; i++) {
+          snowflakes.push({
+            x: random(width),
+            y: random(-height, 0),
+            size: random(3, 6),
+            speed: random(0.5, 1.5)
+          });
+        }
+      } else if (season === 'autumn') {
+        for (let i = 0; i < 100; i++) {
+          raindrops.push({
+            x: random(width),
+            y: random(-height, 0),
+            length: random(10, 20),
+            speed: random(7, 9)
+          });
+        }
+      }
       redraw();
     }
 
